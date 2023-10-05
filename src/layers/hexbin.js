@@ -3,7 +3,7 @@ import {
   Color,
   DoubleSide,
   Mesh,
-  MeshLambertMaterial,
+  MeshBasicMaterial,
   Object3D
 } from 'three';
 
@@ -14,7 +14,7 @@ const THREE = window.THREE
     Color,
     DoubleSide,
     Mesh,
-    MeshLambertMaterial,
+    MeshBasicMaterial,
     Object3D
   };
 
@@ -120,7 +120,7 @@ export default Kapsule({
             return geom;
           }));
 
-      const hexPoints = new THREE.Mesh(hexPointsGeometry, new THREE.MeshLambertMaterial({
+      const hexPoints = new THREE.Mesh(hexPointsGeometry, new THREE.MeshBasicMaterial({
         color: 0xffffff,
         transparent: true,
         vertexColors: true,
@@ -207,8 +207,8 @@ export default Kapsule({
 
         [sideColor, topColor].forEach(color => {
           if (!hexMaterials.hasOwnProperty(color)) {
-            const opacity = colorAlpha(color);
-            hexMaterials[color] = new THREE.MeshLambertMaterial({
+            const opacity = 0.9;
+            hexMaterials[color] = new THREE.MeshBasicMaterial({
               color: colorStr2Hex(color),
               transparent: opacity < 1,
               opacity: opacity,
