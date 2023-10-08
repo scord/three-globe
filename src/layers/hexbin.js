@@ -4,6 +4,8 @@ import {
   DoubleSide,
   Mesh,
   MeshBasicMaterial,
+  ShaderMaterial,
+  Vector3,
   Object3D
 } from 'three';
 
@@ -15,6 +17,8 @@ const THREE = window.THREE
     DoubleSide,
     Mesh,
     MeshBasicMaterial,
+    ShaderMaterial,
+    Vector3,
     Object3D
   };
 
@@ -35,6 +39,29 @@ import { array2BufferAttr } from '../utils/three-utils';
 import { emptyObject } from '../utils/gc';
 import threeDigest from '../utils/digest';
 import { GLOBE_RADIUS } from '../constants';
+
+const hexVertexShader = [
+  
+  "varying vec4 vColor;",
+  "varying vec3 vVertexWorldPosition;",
+  "uniform vec3 hexpos;",
+  "attribute vec4 hexColor;",
+  "void main() {",
+  "vVertexWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;",
+  "vColor =  hexColor;",
+  "vColor =  mix(vec4(1.0,1.0,1.0,1.0), vColor, step(2.8, distance(normalize(vVertexWorldPosition)*100.0,hexpos)));",
+  "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+  "}"
+].join("\n")
+const hexFragmentShader = [
+  "varying vec3 vVertexNormal;",
+  "varying vec3 vVertexWorldPosition;",
+  "varying vec4 vColor;",
+  
+  "void main( void ) {",
+  "gl_FragColor = vColor;",
+  "#include <colorspace_fragment>",
+  "}"].join("\n")
 
 //
 
@@ -86,6 +113,8 @@ export default Kapsule({
 
     const scene = state.hexBinMerge ? new THREE.Object3D() : state.scene; // use fake scene if merging hex points
 
+    console.log("hex update");
+
     threeDigest(hexBins, scene, {
       createObj,
       updateObj,
@@ -110,9 +139,10 @@ export default Kapsule({
             const topColor = color2ShaderArr(topColorAccessor(d));
             const sideColor = color2ShaderArr(sideColorAccessor(d));
 
+            
             const nVertices = geom.getAttribute('position').count;
             const topFaceIdx = geom.groups[0].count; // starting vertex index of top group
-            geom.setAttribute('color', array2BufferAttr(
+            geom.setAttribute('hexColor', array2BufferAttr(
               [...new Array(nVertices)].map((_, idx) => idx >= topFaceIdx ? topColor : sideColor),
               4
             ));
@@ -120,12 +150,19 @@ export default Kapsule({
             return geom;
           }));
 
-      const hexPoints = new THREE.Mesh(hexPointsGeometry, new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
+      const material = new THREE.ShaderMaterial({
+        fragmentShader: hexFragmentShader,
+        vertexShader: hexVertexShader,
         vertexColors: true,
+        uniforms: { hexpos: { value: new THREE.Vector3(0.0) }},
         side: THREE.DoubleSide
-      }));
+      });
+
+    
+
+      const hexPoints = new THREE.Mesh(hexPointsGeometry, material);
+
+      
 
       hexPoints.__globeObjType = 'hexBinPoints'; // Add object type
       hexPoints.__data = hexBins; // Attach obj data
@@ -207,7 +244,8 @@ export default Kapsule({
 
         [sideColor, topColor].forEach(color => {
           if (!hexMaterials.hasOwnProperty(color)) {
-            const opacity = 0.9;
+            
+            
             hexMaterials[color] = new THREE.MeshBasicMaterial({
               color: colorStr2Hex(color),
               transparent: opacity < 1,
